@@ -1,0 +1,14 @@
+# docker-compose.yml
+# This file is part of the OpenLLM project issue tracker:
+
+# Define the services that make up your application
+services:
+  career-agent:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/jobs.db
+    restart: unless-stopped

@@ -1,0 +1,122 @@
+# config/profile.yaml
+# Candidate career profile — used by matching, scoring, and decision engines.
+# All fields are optional; missing fields fall back to sensible defaults.
+
+# ── Core Role Targeting ──────────────────────────────────────────────────────
+
+target_roles:
+  - Applied AI Engineer
+  - MLOps Engineer
+  - AI Engineer
+  - LLM Engineer
+  - AI Platform Engineer
+
+preferred_role_track: AI Engineer  # Primary career track for direction analysis
+
+experience_level: mid              # Options: junior | mid | senior
+                                   # Used for seniority realism scoring
+
+seniority_target: mid              # mid = 2-5 years, senior = 5+, junior = 0-2
+
+# ── Keywords ─────────────────────────────────────────────────────────────────
+
+positive_keywords:
+  - python
+  - ai
+  - ml
+  - docker
+  - fastapi
+  - terraform
+  - aws
+  - llm
+  - rag
+  - langchain
+  - embeddings
+  - mlops
+  - kubernetes
+  - openai
+
+negative_keywords:
+  - phd
+  - principal
+  - relocation
+  - 10+ years
+  - 10 years experience
+
+# ── Skills ───────────────────────────────────────────────────────────────────
+
+preferred_technologies:
+  - Python
+  - FastAPI
+  - Docker
+  - AWS
+  - Terraform
+  - LangChain
+  - OpenAI API
+  - SQLAlchemy
+  - GitHub Actions
+
+avoided_technologies:
+  - Java
+  - .NET
+  - Ruby on Rails
+  - PHP
+  - COBOL
+
+# ── Location & Work Mode ─────────────────────────────────────────────────────
+
+preferred_locations:
+  - Israel
+  - Remote
+
+work_mode_preference: remote       # Options: remote | hybrid | onsite | any
+
+# ── Preferences ──────────────────────────────────────────────────────────────
+
+company_type_preference:           # Leave empty for no preference
+  - startup
+  - scaleup
+  - tech company
+
+language_preference: english       # For job posting language detection
+
+salary_preference:                 # Optional — leave as empty string if not set
+  min: ""
+  currency: ""
+
+# ── Career Direction ─────────────────────────────────────────────────────────
+
+short_term_goal: >
+  Secure a role building LLM-powered applications or MLOps pipelines.
+  Focused on production AI systems, RAG pipelines, and cloud-native deployment.
+
+long_term_goal: >
+  Become a senior AI platform engineer or technical lead at a product company,
+  contributing to AI strategy and building scalable ML infrastructure.
+
+preferred_domains:
+  - AI/ML Engineering
+  - LLM Applications
+  - MLOps
+  - Platform Engineering
+
+willingness_to_learn:              # Skills the candidate is willing to learn
+  - Rust
+  - Go
+  - Spark
+  - Kafka
+  - TypeScript
+
+# ── Strategic Role Classification ────────────────────────────────────────────
+
+career_tracks:
+  primary: Applied AI / LLM Engineer
+  acceptable:
+    - MLOps Engineer
+    - AI Platform Engineer
+    - Backend Engineer with AI focus
+  avoid:
+    - Data Analyst
+    - Business Intelligence
+    - Manual QA
+    - Frontend only
