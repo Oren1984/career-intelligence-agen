@@ -1,0 +1,43 @@
+# .gitignore
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+
+# virtual environment
+/venv/
+/.venv/
+.env
+
+# database files
+data/*.db
+
+# pytest
+.pytest_cache/
+*.egg-info/
+dist/
+
+# IDE files
+build/
+.DS_Store
+
+# logs
+logs/
+*.log
+
+# ── Local Knowledge Base (private career documents) ──────────────────────────
+# Personal files in knowledge_base/ are NEVER committed to git.
+# Only sample files in knowledge_base/_samples/ are committed.
+knowledge_base/resume/
+knowledge_base/projects/
+knowledge_base/skills/
+knowledge_base/experience/
+knowledge_base/achievements/
+knowledge_base/strategy/
+knowledge_base/interview_prep/
+knowledge_base/general/
+# Commit only: knowledge_base/README.md and knowledge_base/_samples/
+
+# ── Local RAG Index (generated, not committed) ────────────────────────────────
+data/knowledge_index/
