@@ -1,0 +1,70 @@
+Continue the implementation in the repository: career-intelligence-agen
+
+IMPORTANT:
+- Resume work from the current state on branch: feature/local-personal-profile
+- Do NOT redo completed work
+- Do NOT restart phases from scratch
+- Detect what is already implemented and continue from the next incomplete phase
+
+GOAL:
+Complete the Personal Profile feature end-to-end as previously defined:
+- local profile model
+- profile management service
+- dashboard Personal Profile page
+- integration with all analysis engines
+- validation that profile affects results
+- privacy handling (.gitignore, examples)
+- full documentation
+- final summary
+
+INSTRUCTIONS:
+
+1. First, analyze current progress:
+   - Which phases are already completed?
+   - Which files/modules are already implemented?
+   - What remains incomplete?
+
+2. Continue ONLY the missing parts:
+   - Finish incomplete modules
+   - Complete UI integration if partial
+   - Ensure profile is actually used in:
+     - CareerScorer
+     - GapAnalyzer
+     - ActionPlanner
+     - PortfolioMatcher
+     - RAG job analysis
+   - Add validation tests if missing
+   - Ensure results change based on profile
+
+3. Run full validation:
+   - All tests must pass
+   - No regressions
+   - Add missing tests if needed
+
+4. Complete documentation:
+   - Finish or update all required docs
+   - Especially:
+     docs/final_personal_profile_summary.md
+
+5. Provide final output:
+   - terminal-style summary
+   - files added/modified
+   - tests results
+   - validation outcome
+   - run checklist
+
+CONSTRAINTS:
+- Keep everything local-first and privacy-safe
+- Do not introduce cloud dependencies
+- Do not break existing functionality
+- Keep implementation clean and practical
+
+SUCCESS CRITERIA:
+- Personal Profile is fully working
+- Profile is stored locally
+- Profile clearly affects analysis results
+- System remains stable
+- Tests pass
+- Documentation complete
+
+Continue from the current state and complete the remaining work.

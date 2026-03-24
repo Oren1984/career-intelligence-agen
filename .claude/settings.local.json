@@ -9,7 +9,9 @@
       "Bash(git checkout:*)",
       "Bash(ls -la /c/Users/ORENS/career-intelligence-agen/tests/*.py)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(find C:UsersORENScareer-intelligence-agen -type f \\\\\\(-name *.py -o -name *.txt -o -name *.md -o -name *.json -o -name .gitignore \\\\\\))",
+      "Bash(ls -1 C:UsersORENScareer-intelligence-agenteststest_*.py)"
     ]
   }
 }
