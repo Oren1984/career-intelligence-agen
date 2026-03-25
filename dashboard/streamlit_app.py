@@ -881,6 +881,116 @@ with tab_profile:
         with st.expander("View Profile Prompt String (used in LLM analysis)"):
             st.code(candidate.to_prompt_string(), language=None)
 
+    # ── Personal Profile Editor ────────────────────────────────────────────────
+    st.markdown("---")
+    st.markdown("#### Edit Personal Profile")
+    st.caption(
+        "Stored locally at `data/personal_profile.json` (gitignored — never committed). "
+        "Overrides `config/profile.yaml` values."
+    )
+
+    try:
+        from app.services.personal_profile_service import (
+            load_personal_profile, save_personal_profile, profile_exists,
+        )
+        _pp = load_personal_profile()
+    except Exception as _pp_exc:
+        st.error(f"Could not load personal profile service: {_pp_exc}")
+        _pp = None
+
+    if _pp is not None:
+        with st.form("personal_profile_edit_form"):
+            ef1, ef2 = st.columns(2)
+            pp_name = ef1.text_input("Full Name", value=_pp.get("name", ""))
+            pp_headline = ef2.text_input("Headline", value=_pp.get("headline", ""),
+                                         placeholder="e.g. AI Engineer | MLOps | Python")
+
+            ef3, ef4 = st.columns(2)
+            _exp_opts = ["", "junior", "mid", "senior"]
+            _cur_exp = _pp.get("experience_level", "")
+            pp_experience = ef3.selectbox(
+                "Experience Level",
+                options=_exp_opts,
+                index=_exp_opts.index(_cur_exp) if _cur_exp in _exp_opts else 0,
+            )
+            _mode_opts = ["", "remote", "hybrid", "onsite", "any"]
+            _cur_mode = _pp.get("work_mode_preference", "")
+            pp_work_mode = ef4.selectbox(
+                "Work Mode Preference",
+                options=_mode_opts,
+                index=_mode_opts.index(_cur_mode) if _cur_mode in _mode_opts else 0,
+            )
+
+            pp_target_roles = st.text_input(
+                "Target Roles (comma-separated)",
+                value=", ".join(_pp.get("target_roles", [])),
+                placeholder="e.g. AI Engineer, MLOps Engineer",
+            )
+            pp_strong_skills = st.text_input(
+                "Strong Skills (comma-separated)",
+                value=", ".join(_pp.get("strong_skills", [])),
+                placeholder="e.g. Python, RAG, Docker",
+            )
+            pp_weak_skills = st.text_input(
+                "Weak/Known Gaps (comma-separated)",
+                value=", ".join(_pp.get("weak_skills", [])),
+                placeholder="e.g. Kubernetes, Scala",
+            )
+            pp_willingness = st.text_input(
+                "Willing to Learn (comma-separated)",
+                value=", ".join(_pp.get("willingness_to_learn", [])),
+                placeholder="e.g. Rust, Go",
+            )
+            pp_preferred_tech = st.text_input(
+                "Preferred Technologies (comma-separated)",
+                value=", ".join(_pp.get("preferred_technologies", [])),
+            )
+            pp_avoided_tech = st.text_input(
+                "Technologies to Avoid (comma-separated)",
+                value=", ".join(_pp.get("avoided_technologies", [])),
+            )
+
+            ef5, ef6 = st.columns(2)
+            pp_short_goal = ef5.text_input("Short-Term Goal", value=_pp.get("short_term_goal", ""))
+            pp_long_goal = ef6.text_input("Long-Term Goal", value=_pp.get("long_term_goal", ""))
+
+            pp_resume_summary = st.text_area(
+                "Resume Summary", value=_pp.get("resume_summary", ""), height=80,
+            )
+            pp_notes = st.text_area("Notes", value=_pp.get("notes", ""), height=60)
+
+            pp_save = st.form_submit_button("Save Personal Profile", type="primary")
+
+        if pp_save:
+            def _csv_to_list(s: str) -> list[str]:
+                return [x.strip() for x in s.split(",") if x.strip()]
+
+            updated = load_personal_profile()
+            updated.update({
+                "name": pp_name.strip(),
+                "headline": pp_headline.strip(),
+                "experience_level": pp_experience,
+                "work_mode_preference": pp_work_mode,
+                "target_roles": _csv_to_list(pp_target_roles),
+                "strong_skills": _csv_to_list(pp_strong_skills),
+                "weak_skills": _csv_to_list(pp_weak_skills),
+                "willingness_to_learn": _csv_to_list(pp_willingness),
+                "preferred_technologies": _csv_to_list(pp_preferred_tech),
+                "avoided_technologies": _csv_to_list(pp_avoided_tech),
+                "short_term_goal": pp_short_goal.strip(),
+                "long_term_goal": pp_long_goal.strip(),
+                "resume_summary": pp_resume_summary.strip(),
+                "notes": pp_notes.strip(),
+            })
+            try:
+                save_personal_profile(updated)
+                st.success("Personal profile saved to `data/personal_profile.json`.")
+                st.cache_resource.clear()
+            except ValueError as _ve:
+                st.error(f"Validation error: {_ve}")
+            except Exception as _se:
+                st.error(f"Could not save profile: {_se}")
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Tab: Analyze External Job (Paste & Analyze Mode)
