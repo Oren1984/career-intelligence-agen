@@ -20,11 +20,16 @@ _CONFIG_PROFILE_PATH = Path(__file__).parent.parent.parent / "config" / "profile
 class CandidateProfile:
     """
     Unified candidate profile built from:
-      - config/profile.yaml    (roles, keywords, preferences, goals)
+      - config/profile.yaml                  (roles, keywords, preferences, goals)
+      - data/personal_profile.json           (personal overrides + new fields)
       - data/candidate_profile/summary.txt   (free-text summary)
       - data/candidate_profile/skills.json   (structured skills)
       - data/candidate_profile/projects.json (project examples)
     """
+
+    # ── Personal Identity ────────────────────────────────────────────────────
+    name: str = ""
+    headline: str = ""
 
     # ── Core Role Targeting ──────────────────────────────────────────────────
     target_roles: list[str] = field(default_factory=list)
@@ -58,6 +63,21 @@ class CandidateProfile:
     # ── Career Tracks ────────────────────────────────────────────────────────
     career_tracks: dict[str, Any] = field(default_factory=dict)
 
+    # ── Personal Profile — explicit skill signals ─────────────────────────────
+    strong_skills: list[str] = field(default_factory=list)
+    # ^ Skills you are highly confident in (boost skill overlap scoring)
+    weak_skills: list[str] = field(default_factory=list)
+    # ^ Known weak areas (flagged in gap analysis even if technically "known")
+
+    # ── Portfolio prioritisation ──────────────────────────────────────────────
+    portfolio_project_priorities: list[str] = field(default_factory=list)
+    # ^ Ordered project names — earlier = higher emphasis preference
+
+    # ── Summaries ────────────────────────────────────────────────────────────
+    resume_summary: str = ""
+    achievements_summary: str = ""
+    notes: str = ""
+
     # ── Profile Data Files ───────────────────────────────────────────────────
     summary: str = ""
     skills: dict[str, list[str]] = field(default_factory=dict)
@@ -67,10 +87,14 @@ class CandidateProfile:
 
     @property
     def all_skills(self) -> list[str]:
-        """Flat list of all skills across all categories."""
+        """Flat list of all skills: structured categories + strong_skills (deduplicated)."""
         result: list[str] = []
         for skill_list in self.skills.values():
             result.extend(skill_list)
+        # Include strong_skills so they always count in skill matching
+        for s in self.strong_skills:
+            if s not in result:
+                result.append(s)
         return result
 
     @property
@@ -139,27 +163,47 @@ class CandidateProfile:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            # Personal identity
+            "name": self.name,
+            "headline": self.headline,
+            # Role targeting
             "target_roles": self.target_roles,
             "preferred_role_track": self.preferred_role_track,
             "experience_level": self.experience_level,
             "seniority_target": self.seniority_target,
+            # Keywords
             "positive_keywords": self.positive_keywords,
             "negative_keywords": self.negative_keywords,
+            # Technologies
             "preferred_technologies": self.preferred_technologies,
             "avoided_technologies": self.avoided_technologies,
+            # Location
             "preferred_locations": self.preferred_locations,
             "work_mode_preference": self.work_mode_preference,
+            # Preferences
             "company_type_preference": self.company_type_preference,
             "language_preference": self.language_preference,
             "salary_preference": self.salary_preference,
+            # Goals
             "short_term_goal": self.short_term_goal,
             "long_term_goal": self.long_term_goal,
             "preferred_domains": self.preferred_domains,
             "willingness_to_learn": self.willingness_to_learn,
             "career_tracks": self.career_tracks,
-            "summary": self.summary,
-            "skills": self.skills,
+            # Skills — flat list for scorer convenience
+            "all_skills": self.all_skills,
+            "strong_skills": self.strong_skills,
+            "weak_skills": self.weak_skills,
+            # Portfolio
+            "portfolio_project_priorities": self.portfolio_project_priorities,
             "projects": self.projects,
+            # Summaries
+            "resume_summary": self.resume_summary,
+            "achievements_summary": self.achievements_summary,
+            "notes": self.notes,
+            "summary": self.summary,
+            # Raw skills dict
+            "skills": self.skills,
         }
 
 
@@ -171,11 +215,13 @@ def load_candidate_profile(
     Load the candidate profile from disk.
 
     Reads (in order, all optional):
-      1. config/profile.yaml      → roles, keywords, preferences, goals
-      2. data/candidate_profile/summary.txt   → free-text summary
-      3. data/candidate_profile/skills.json   → structured skills
-      4. data/candidate_profile/projects.json → projects
+      1. config/profile.yaml              → base roles, keywords, preferences, goals
+      2. data/personal_profile.json       → personal overrides + new fields
+      3. data/candidate_profile/summary.txt   → free-text summary
+      4. data/candidate_profile/skills.json   → structured skills
+      5. data/candidate_profile/projects.json → projects
 
+    Personal profile fields take priority over profile.yaml when non-empty.
     Missing files are silently skipped; defaults are empty.
     """
     profile = CandidateProfile()
@@ -211,7 +257,82 @@ def load_candidate_profile(
         except Exception as exc:
             logger.warning("Could not read %s: %s", cfg_path, exc)
 
-    # 2–4. Load data/candidate_profile/ files
+    # 2. Overlay from data/personal_profile.json (personal overrides)
+    try:
+        from app.services.personal_profile_service import load_personal_profile
+        personal = load_personal_profile()
+
+        # Personal identity (new fields)
+        if personal.get("name"):
+            profile.name = personal["name"]
+        if personal.get("headline"):
+            profile.headline = personal["headline"]
+
+        # Role targeting — override only if non-empty in personal profile
+        if personal.get("target_roles"):
+            profile.target_roles = personal["target_roles"]
+        if personal.get("experience_level"):
+            profile.experience_level = personal["experience_level"]
+            profile.seniority_target = personal["experience_level"]
+        if personal.get("work_mode_preference"):
+            profile.work_mode_preference = personal["work_mode_preference"]
+        if personal.get("preferred_locations"):
+            profile.preferred_locations = personal["preferred_locations"]
+        if personal.get("preferred_domains"):
+            profile.preferred_domains = personal["preferred_domains"]
+
+        # Skills
+        if personal.get("strong_skills"):
+            profile.strong_skills = personal["strong_skills"]
+        if personal.get("weak_skills"):
+            profile.weak_skills = personal["weak_skills"]
+        if personal.get("willingness_to_learn"):
+            profile.willingness_to_learn = personal["willingness_to_learn"]
+
+        # Technologies
+        if personal.get("preferred_technologies"):
+            profile.preferred_technologies = personal["preferred_technologies"]
+        if personal.get("avoided_technologies"):
+            profile.avoided_technologies = personal["avoided_technologies"]
+
+        # Goals
+        if personal.get("short_term_goal"):
+            profile.short_term_goal = personal["short_term_goal"]
+        if personal.get("long_term_goal"):
+            profile.long_term_goal = personal["long_term_goal"]
+
+        # Career tracks
+        ct = personal.get("career_tracks", {})
+        if ct.get("primary"):
+            profile.career_tracks = {**profile.career_tracks, **{k: v for k, v in ct.items() if v}}
+
+        # Company & salary
+        if personal.get("company_type_preference"):
+            profile.company_type_preference = personal["company_type_preference"]
+        sal = personal.get("salary_preference", {})
+        if sal.get("min") or sal.get("currency"):
+            profile.salary_preference = sal
+
+        # Portfolio priorities
+        if personal.get("portfolio_project_priorities"):
+            profile.portfolio_project_priorities = personal["portfolio_project_priorities"]
+
+        # Summaries
+        if personal.get("resume_summary"):
+            profile.resume_summary = personal["resume_summary"]
+        if personal.get("achievements_summary"):
+            profile.achievements_summary = personal["achievements_summary"]
+        if personal.get("notes"):
+            profile.notes = personal["notes"]
+
+        logger.debug("Personal profile overlay applied from data/personal_profile.json")
+
+    except ImportError:
+        pass  # personal_profile_service not available
+    except Exception as exc:
+        logger.warning("Could not apply personal profile overlay: %s", exc)
+
+    # 3–5. Load data/candidate_profile/ files
     p_dir = Path(profile_dir or _DEFAULT_PROFILE_DIR)
 
     summary_path = p_dir / "summary.txt"

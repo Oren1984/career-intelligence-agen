@@ -39,5 +39,8 @@ knowledge_base/interview_prep/
 knowledge_base/general/
 # Commit only: knowledge_base/README.md and knowledge_base/_samples/
 
+# ── Personal Profile (private, never committed) ───────────────────────────────
+data/personal_profile.json
+
 # ── Local RAG Index (generated, not committed) ────────────────────────────────
 data/knowledge_index/

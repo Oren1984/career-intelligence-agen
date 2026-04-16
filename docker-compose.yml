@@ -6,7 +6,7 @@ services:
   career-agent:
     build: .
     ports:
-      - "8501:8501"
+      - "8508:8508"
     volumes:
       - ./data:/app/data
     environment:

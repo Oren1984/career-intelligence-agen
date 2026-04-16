@@ -9,7 +9,14 @@
       "Bash(git checkout:*)",
       "Bash(ls -la /c/Users/ORENS/career-intelligence-agen/tests/*.py)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(find C:UsersORENScareer-intelligence-agen -type f \\\\\\(-name *.py -o -name *.txt -o -name *.md -o -name *.json -o -name .gitignore \\\\\\))",
+      "Bash(ls -1 C:UsersORENScareer-intelligence-agenteststest_*.py)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Read(//c/Users/ORENS/AppData/Local/Temp/claude/C--Users-ORENS-career-intelligence-agen/bae84cee-28a9-4805-af5e-4231bba02bfc/tasks/**)",
+      "Read(//c/Users/ORENS/AppData/Local/Temp/claude/C--Users-ORENS-career-intelligence-agen/bae84cee-28a9-4805-af5e-4931bba02bfc/tasks/**)",
+      "Read(//c/Users/ORENS/AppData/Local/Temp/claude/**)",
+      "Bash(xargs cat:*)"
     ]
   }
 }

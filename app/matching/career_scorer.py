@@ -298,8 +298,10 @@ def _score_skill_overlap(text: str, profile_dict: dict[str, Any]) -> tuple[float
     all_skills_lower = [s.lower() for s in profile_dict.get("all_skills", [])]
     preferred_techs = [t.lower() for t in profile_dict.get("preferred_technologies", [])]
     positive_kws = [kw.lower() for kw in profile_dict.get("positive_keywords", [])]
+    # strong_skills are explicitly stated confident skills — always count them
+    strong_skills = [s.lower() for s in profile_dict.get("strong_skills", [])]
 
-    candidate_skills = list(set(all_skills_lower + preferred_techs + positive_kws))
+    candidate_skills = list(set(all_skills_lower + preferred_techs + positive_kws + strong_skills))
     job_skills = _extract_skill_tokens(text)
 
     if not job_skills:
