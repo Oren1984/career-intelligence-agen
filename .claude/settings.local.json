@@ -16,7 +16,8 @@
       "Read(//c/Users/ORENS/AppData/Local/Temp/claude/C--Users-ORENS-career-intelligence-agen/bae84cee-28a9-4805-af5e-4231bba02bfc/tasks/**)",
       "Read(//c/Users/ORENS/AppData/Local/Temp/claude/C--Users-ORENS-career-intelligence-agen/bae84cee-28a9-4805-af5e-4931bba02bfc/tasks/**)",
       "Read(//c/Users/ORENS/AppData/Local/Temp/claude/**)",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(find C:\\\\Users\\\\ORENS\\\\career-intelligence-agent\\\\scripts *)"
     ]
   }
 }
