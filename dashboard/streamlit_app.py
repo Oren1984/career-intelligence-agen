@@ -189,6 +189,44 @@ st.sidebar.markdown(
 st.sidebar.caption("Set `SOURCE_MODE` env var to override.")
 st.sidebar.markdown("---")
 
+# ── Execution Mode ─────────────────────────────────────────────────────────────
+st.sidebar.subheader("Execution Mode")
+_exec_display = st.sidebar.radio(
+    "exec_mode_radio",
+    options=["Hybrid (RAG + Agent)", "Agent Only", "RAG Only"],
+    index=0,
+    label_visibility="collapsed",
+    help=(
+        "Hybrid: career scoring + knowledge base evidence (default).\n"
+        "Agent Only: career scoring only, no KB retrieval.\n"
+        "RAG Only: knowledge retrieval only, no career scoring."
+    ),
+)
+_EXEC_KEY = {
+    "Hybrid (RAG + Agent)": "hybrid",
+    "Agent Only": "agent_only",
+    "RAG Only": "rag_only",
+}
+_EXEC_LABELS = {
+    "hybrid": "Hybrid (RAG + Agent)",
+    "agent_only": "Agent Only",
+    "rag_only": "RAG Only",
+}
+execution_mode = _EXEC_KEY[_exec_display]
+_EXEC_COLORS = {"hybrid": "#0969da", "agent_only": "#9a6700", "rag_only": "#1a7f37"}
+_EXEC_DESCS = {
+    "hybrid": "Scoring + KB retrieval",
+    "agent_only": "Scoring only, KB off",
+    "rag_only": "KB retrieval only",
+}
+st.sidebar.markdown(
+    f'<span style="background:{_EXEC_COLORS[execution_mode]};color:white;'
+    f'padding:2px 8px;border-radius:8px;font-size:0.8em;">'
+    f'{_EXEC_DESCS[execution_mode]}</span>',
+    unsafe_allow_html=True,
+)
+st.sidebar.markdown("---")
+
 # ── Filters ────────────────────────────────────────────────────────────────────
 st.sidebar.subheader("Filters")
 
@@ -1002,6 +1040,22 @@ with tab_paste:
         "No job collection required — works with any posting from any source."
     )
 
+    # ── Execution mode display ─────────────────────────────────────────────────
+    _paste_mode_descs = {
+        "hybrid": "Career scoring with knowledge base evidence",
+        "agent_only": "Career scoring only — knowledge base evidence disabled",
+        "rag_only": "Knowledge retrieval only — career scoring disabled",
+    }
+    st.markdown(
+        f'<span style="background:{_EXEC_COLORS[execution_mode]};color:white;'
+        f'padding:3px 10px;border-radius:10px;font-size:0.85em;font-weight:bold;">'
+        f'Mode: {_EXEC_LABELS[execution_mode]}</span>'
+        f'&nbsp;&nbsp;<span style="color:#666;font-size:0.85em;">'
+        f'{_paste_mode_descs[execution_mode]}</span>',
+        unsafe_allow_html=True,
+    )
+    st.markdown("")
+
     # ── Input form ────────────────────────────────────────────────────────────
     with st.form("paste_job_form", clear_on_submit=False):
         col_meta1, col_meta2, col_meta3 = st.columns(3)
@@ -1069,36 +1123,59 @@ with tab_paste:
         if not input_text.strip():
             st.warning("Please paste a job description before clicking Analyze.")
         else:
-            with st.spinner("Running full career analysis..."):
+            _spinner_msgs = {
+                "hybrid": "Running full career analysis with knowledge evidence...",
+                "agent_only": "Running career decision analysis...",
+                "rag_only": "Retrieving knowledge base evidence...",
+            }
+            with st.spinner(_spinner_msgs.get(execution_mode, "Analyzing...")):
                 try:
                     analyzer = _get_manual_analyzer()
-                    result = analyzer.analyze(
+                    result = analyzer.analyze_with_mode(
                         raw_text=input_text,
+                        mode=execution_mode,
                         title=input_title,
                         company=input_company,
                         location=input_location,
                     )
                     st.session_state["paste_result"] = result
                     st.session_state["paste_mode"] = "full"
+                    st.session_state["paste_exec_mode"] = execution_mode
+                    st.session_state["paste_exec_status"] = "success"
                 except Exception as exc:
                     st.error(f"Analysis failed: {exc}")
+                    st.session_state["paste_exec_status"] = "error"
 
     # ── Handle: Should I Apply? ───────────────────────────────────────────────
     if btn_apply:
         if not input_text.strip():
             st.warning("Please paste a job description first.")
+        elif execution_mode == "rag_only":
+            st.info(
+                "'Should I Apply?' requires career scoring. "
+                "Switch to **Agent Only** or **Hybrid** mode in the sidebar."
+            )
         else:
             with st.spinner("Evaluating..."):
                 try:
                     analyzer = _get_manual_analyzer()
-                    apply_out = analyzer.analyze_apply_only(
-                        raw_text=input_text,
-                        title=input_title,
-                        company=input_company,
-                        location=input_location,
-                    )
+                    if execution_mode == "agent_only":
+                        apply_out = analyzer._base_analyzer.analyze_apply_only(
+                            raw_text=input_text,
+                            title=input_title,
+                            company=input_company,
+                            location=input_location,
+                        )
+                    else:
+                        apply_out = analyzer.analyze_apply_only(
+                            raw_text=input_text,
+                            title=input_title,
+                            company=input_company,
+                            location=input_location,
+                        )
                     st.session_state["paste_apply_out"] = apply_out
                     st.session_state["paste_mode"] = "apply"
+                    st.session_state["paste_exec_mode"] = execution_mode
                 except Exception as exc:
                     st.error(f"Evaluation failed: {exc}")
 
@@ -1106,196 +1183,326 @@ with tab_paste:
     if btn_portfolio:
         if not input_text.strip():
             st.warning("Please paste a job description first.")
+        elif execution_mode == "rag_only":
+            st.info(
+                "'Which Project?' requires career scoring. "
+                "Switch to **Agent Only** or **Hybrid** mode in the sidebar."
+            )
         else:
             with st.spinner("Matching portfolio..."):
                 try:
                     analyzer = _get_manual_analyzer()
-                    port_out = analyzer.analyze_portfolio_only(
-                        raw_text=input_text,
-                        title=input_title,
-                        company=input_company,
-                        location=input_location,
-                    )
+                    if execution_mode == "agent_only":
+                        port_out = analyzer._base_analyzer.analyze_portfolio_only(
+                            raw_text=input_text,
+                            title=input_title,
+                            company=input_company,
+                            location=input_location,
+                        )
+                    else:
+                        port_out = analyzer.analyze_portfolio_only(
+                            raw_text=input_text,
+                            title=input_title,
+                            company=input_company,
+                            location=input_location,
+                        )
                     st.session_state["paste_port_out"] = port_out
                     st.session_state["paste_mode"] = "portfolio"
+                    st.session_state["paste_exec_mode"] = execution_mode
                 except Exception as exc:
                     st.error(f"Portfolio match failed: {exc}")
 
+    # ── Execution status indicator ─────────────────────────────────────────────
+    _exec_status_val = st.session_state.get("paste_exec_status", "")
+    _last_exec_mode = st.session_state.get("paste_exec_mode", "")
+    if _exec_status_val and _last_exec_mode:
+        _status_color = "#1a7f37" if _exec_status_val == "success" else "#cf222e"
+        _status_icon = "✓" if _exec_status_val == "success" else "✗"
+        _components_ran = {
+            "hybrid": "Career Scorer ✓ · KB Retrieval ✓",
+            "agent_only": "Career Scorer ✓ · KB Retrieval —",
+            "rag_only": "Career Scorer — · KB Retrieval ✓",
+        }.get(_last_exec_mode, "")
+        st.markdown(
+            f'<div style="background:#f6f8fa;border-left:4px solid {_status_color};'
+            f'padding:8px 14px;border-radius:4px;font-size:0.85em;margin-bottom:10px;">'
+            f'<strong>Last run:</strong> {_EXEC_LABELS.get(_last_exec_mode, _last_exec_mode)}'
+            f'&nbsp;&nbsp;|&nbsp;&nbsp;'
+            f'<strong>Status:</strong> {_status_icon} {_exec_status_val.capitalize()}'
+            f'&nbsp;&nbsp;|&nbsp;&nbsp;'
+            f'<strong>Components:</strong> {_components_ran}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
     # ── Render: Full Analysis ─────────────────────────────────────────────────
     paste_mode = st.session_state.get("paste_mode", "")
+
+    # Import RAGOnlyResult for type-based rendering dispatch
+    try:
+        from app.services.rag_job_analysis import RAGOnlyResult as _RAGOnlyResult
+    except ImportError:
+        _RAGOnlyResult = type(None)
 
     if paste_mode == "full":
         result = st.session_state.get("paste_result")
         if result:
             st.markdown("---")
 
-            # Header row
-            label = result.recommendation_label
-            fit = result.overall_fit_score
-            pj = result.parsed_job
-
-            st.markdown(
-                f"### {_LABEL_ICONS.get(label, '')} {pj.title} "
-                f"{'at ' + pj.company if pj.company != 'Unknown Company' else ''}"
-            )
-            st.markdown(_label_badge(label), unsafe_allow_html=True)
-
-            res_c1, res_c2 = st.columns([3, 2])
-
-            with res_c1:
-                # ── Fit Score ─────────────────────────────────────────────────
-                st.markdown("#### Fit Score")
-                st.markdown(
-                    f'<h2 style="margin:0;">{fit:.0f}<span style="font-size:0.5em;color:#666;">/100</span></h2>',
-                    unsafe_allow_html=True,
-                )
-                rec_reason = getattr(result, "recommendation_reason", "") or getattr(getattr(result, "base_result", result), "recommendation_reason", "")
-                st.markdown(rec_reason)
-
-                # ── Score Breakdown ───────────────────────────────────────────
-                if result.score_breakdown:
-                    st.markdown("#### Dimension Breakdown")
-                    for dim, val in result.score_breakdown.items():
-                        label_dim = dim.replace("_", " ").title()
-                        st.markdown(
-                            f'<div style="margin-bottom:6px;">'
-                            f'<span style="font-size:0.85em;">{label_dim}</span> '
-                            f'<span style="float:right;font-size:0.85em;">{val:.1f}/10</span>'
-                            f'</div>' + _score_bar(val),
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown("")   # spacer
-
-                # ── Should I Apply? ───────────────────────────────────────────
-                st.markdown("---")
-                st.markdown("#### Should I Apply?")
-                st.markdown(
-                    _apply_badge(result.apply_decision),
-                    unsafe_allow_html=True,
-                )
-                st.markdown(f"*{result.apply_explanation}*")
-
-                # ── Strengths ─────────────────────────────────────────────────
-                if result.strengths:
-                    st.markdown("#### Strengths")
-                    for s in result.strengths:
-                        st.success(f"✓ {s}")
-
-                # ── Gaps ──────────────────────────────────────────────────────
-                if result.gaps:
-                    st.markdown("#### Gaps")
-                    for g in result.gaps:
-                        st.warning(f"△ {g}")
-
-                # ── Risks ─────────────────────────────────────────────────────
-                if result.risks:
-                    st.markdown("#### Risks")
-                    for r in result.risks:
-                        st.error(f"⚠ {r}")
-
-            with res_c2:
-                # ── Action Plan ───────────────────────────────────────────────
-                if result.action_items:
-                    st.markdown("#### Action Plan")
-                    for i, item in enumerate(result.action_items, 1):
-                        st.markdown(f"**{i}.** {item}")
-
-                # ── Portfolio ─────────────────────────────────────────────────
-                st.markdown("---")
-                st.markdown("#### Portfolio Recommendation")
-                # Resolve fields from either RAGAnalysisResult or ManualAnalysisResult
-                _base = getattr(result, "base_result", result)
-                best_proj = getattr(result, "best_matching_project", "") or getattr(_base, "best_matching_project", "")
-                port_rec = getattr(_base, "portfolio_recommendation", "")
-                port_highlights = getattr(_base, "portfolio_highlights", [])
-                if best_proj:
-                    st.success(f"Lead with: **{best_proj}**")
-                st.write(port_rec)
-                for h in port_highlights:
-                    st.caption(f"• {h}")
-
-                # ── Career Direction ──────────────────────────────────────────
-                st.markdown("---")
-                st.markdown("#### Career Direction")
-                detected_track = getattr(_base, "detected_track", "")
-                direction_assessment = getattr(_base, "direction_assessment", "")
-                direction_explanation = getattr(_base, "direction_explanation", "")
-                direction_advice = getattr(_base, "direction_advice", "")
-                if detected_track:
-                    st.markdown(f"**Track:** {detected_track}")
-                direction_icons = {
-                    "aligned":    "🟢 Aligned with your path",
-                    "partial":    "🟡 Partially aligned",
-                    "transition": "🔵 Good transition role",
-                    "off-track":  "🔴 Off your target track",
-                    "unknown":    "⚪ Direction unclear",
+            # ── RAG Only mode: show retrieval results only ────────────────────
+            if isinstance(result, _RAGOnlyResult):
+                cov_icons = {
+                    "high": "🟢 Strong", "medium": "🟡 Moderate",
+                    "low": "🟠 Weak", "none": "⚪ None",
                 }
-                st.markdown(direction_icons.get(direction_assessment, direction_assessment))
-                if direction_explanation:
-                    st.caption(direction_explanation)
-                if direction_advice:
-                    st.info(direction_advice)
+                _cov_color = {
+                    "high": "#1a7f37", "medium": "#9a6700",
+                    "low": "#cf222e", "none": "#6e7781",
+                }.get(result.coverage, "#6e7781")
 
-                # ── Detected metadata ─────────────────────────────────────────
-                st.markdown("---")
-                st.markdown("#### Detected From Posting")
-                # Support both RAGAnalysisResult and ManualAnalysisResult
-                parsed_job = getattr(result, "parsed_job", None) or getattr(getattr(result, "base_result", result), "parsed_job", None)
-                gap_severity = getattr(result, "gap_severity", "") or getattr(getattr(result, "base_result", result), "gap_severity", "")
-                easy_gaps = getattr(result, "easy_to_close_gaps", []) or getattr(getattr(result, "base_result", result), "easy_to_close_gaps", [])
-                hard_gaps = getattr(result, "hard_to_close_gaps", []) or getattr(getattr(result, "base_result", result), "hard_to_close_gaps", [])
-                gap_sev_icon = {"low": "🟢", "medium": "🟡", "high": "🔴"}.get(gap_severity, "⚪")
-                meta_items = [
-                    f"Seniority hint: **{parsed_job.detected_seniority_hint if parsed_job else 'unknown'}**",
-                    f"Gap severity: {gap_sev_icon} **{gap_severity}**",
-                ]
-                if easy_gaps:
-                    meta_items.append(f"Easy to close: {', '.join(easy_gaps[:3])}")
-                if hard_gaps:
-                    meta_items.append(f"Hard gaps: {', '.join(hard_gaps[:3])}")
-                if parsed_job and parsed_job.extracted_technologies:
-                    meta_items.append(
-                        f"Tech detected: {', '.join(parsed_job.extracted_technologies[:8])}"
+                st.markdown("### Knowledge Base Evidence")
+                st.markdown(
+                    f'<span style="background:{_cov_color};color:white;'
+                    f'padding:3px 10px;border-radius:10px;font-size:0.85em;">'
+                    f'Coverage: {cov_icons.get(result.coverage, result.coverage)}</span>'
+                    f'&nbsp;&nbsp;<span style="color:#666;font-size:0.85em;">'
+                    f'KB size: {result.kb_size} chunks</span>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown("")
+
+                evidence = result.retrieved_evidence
+                if evidence:
+                    rag_col1, rag_col2, rag_col3 = st.columns(3)
+                    rag_col1.metric("Chunks Retrieved", len(evidence))
+                    rag_col2.metric("Project Matches", len(result.project_evidence))
+                    rag_col3.metric("Skill Matches", len(result.skill_evidence))
+
+                    st.markdown("#### Retrieved Evidence Chunks")
+                    for i, chunk in enumerate(evidence, 1):
+                        score_str = f"{chunk.score:.3f}" if hasattr(chunk, "score") else ""
+                        cat = getattr(chunk, "category", "")
+                        fname = getattr(chunk, "file_name", "")
+                        text = getattr(chunk, "text", "")
+                        with st.expander(
+                            f"{i}. [{cat}/{fname}] — relevance: {score_str}"
+                        ):
+                            st.write(text[:500] + ("…" if len(text) > 500 else ""))
+
+                    if result.project_evidence:
+                        st.markdown("#### Project Evidence")
+                        for chunk in result.project_evidence:
+                            fname = getattr(chunk, "file_name", "")
+                            text = getattr(chunk, "text", "")
+                            st.success(
+                                f"**{fname}**: {text[:200]}{'…' if len(text) > 200 else ''}"
+                            )
+
+                    if result.skill_evidence:
+                        st.markdown("#### Skill Evidence")
+                        for chunk in result.skill_evidence:
+                            fname = getattr(chunk, "file_name", "")
+                            text = getattr(chunk, "text", "")
+                            st.info(
+                                f"**{fname}**: {text[:200]}{'…' if len(text) > 200 else ''}"
+                            )
+
+                    if result.experience_evidence:
+                        st.markdown("#### Experience Evidence")
+                        for chunk in result.experience_evidence:
+                            fname = getattr(chunk, "file_name", "")
+                            text = getattr(chunk, "text", "")
+                            st.caption(
+                                f"**{fname}**: {text[:200]}{'…' if len(text) > 200 else ''}"
+                            )
+
+                    if result.evidence_context:
+                        with st.expander("View raw evidence context"):
+                            st.text(result.evidence_context)
+                else:
+                    st.info(
+                        "No evidence retrieved from knowledge base. "
+                        "Make sure the knowledge base is ingested (Knowledge Base tab) "
+                        "and contains documents relevant to this job."
                     )
-                for item in meta_items:
-                    st.caption(item)
 
-                # ── RAG Evidence (shown when KB is indexed) ────────────────────
-                evidence = getattr(result, "retrieved_evidence", [])
-                coverage = getattr(result, "coverage", "none")
-                missing_notes = getattr(result, "missing_evidence_notes", [])
-                kb_size = getattr(result, "kb_size", 0)
+                if result.missing_evidence_notes:
+                    st.markdown("#### Notes")
+                    for note in result.missing_evidence_notes:
+                        st.warning(note)
 
-                if evidence or missing_notes:
+                # End of RAG Only rendering — skip the scoring render below
+
+            else:  # Agent Only or Hybrid: career scoring result
+                # Header row
+                label = result.recommendation_label
+                fit = result.overall_fit_score
+                pj = result.parsed_job
+
+                st.markdown(
+                    f"### {_LABEL_ICONS.get(label, '')} {pj.title} "
+                    f"{'at ' + pj.company if pj.company != 'Unknown Company' else ''}"
+                )
+                st.markdown(_label_badge(label), unsafe_allow_html=True)
+
+                res_c1, res_c2 = st.columns([3, 2])
+
+                with res_c1:
+                    # ── Fit Score ─────────────────────────────────────────────
+                    st.markdown("#### Fit Score")
+                    st.markdown(
+                        f'<h2 style="margin:0;">{fit:.0f}<span style="font-size:0.5em;color:#666;">/100</span></h2>',
+                        unsafe_allow_html=True,
+                    )
+                    rec_reason = getattr(result, "recommendation_reason", "") or getattr(getattr(result, "base_result", result), "recommendation_reason", "")
+                    st.markdown(rec_reason)
+
+                    # ── Score Breakdown ───────────────────────────────────────
+                    if result.score_breakdown:
+                        st.markdown("#### Dimension Breakdown")
+                        for dim, val in result.score_breakdown.items():
+                            label_dim = dim.replace("_", " ").title()
+                            st.markdown(
+                                f'<div style="margin-bottom:6px;">'
+                                f'<span style="font-size:0.85em;">{label_dim}</span> '
+                                f'<span style="float:right;font-size:0.85em;">{val:.1f}/10</span>'
+                                f'</div>' + _score_bar(val),
+                                unsafe_allow_html=True,
+                            )
+                            st.markdown("")   # spacer
+
+                    # ── Should I Apply? ───────────────────────────────────────
                     st.markdown("---")
-                    st.markdown("#### Local Knowledge Evidence")
-                    cov_icons = {"high": "🟢 Strong", "medium": "🟡 Moderate", "low": "🟠 Weak", "none": "⚪ None"}
-                    st.caption(
-                        f"Evidence coverage: {cov_icons.get(coverage, coverage)} "
-                        f"| KB size: {kb_size} chunks"
+                    st.markdown("#### Should I Apply?")
+                    st.markdown(
+                        _apply_badge(result.apply_decision),
+                        unsafe_allow_html=True,
                     )
-                    if evidence:
-                        with st.expander(f"View {len(evidence)} evidence chunk(s) retrieved"):
-                            for i, chunk in enumerate(evidence[:5], 1):
-                                score_str = f"{chunk.score:.3f}" if hasattr(chunk, "score") else ""
-                                cat = getattr(chunk, "category", "")
-                                fname = getattr(chunk, "file_name", "")
-                                text = getattr(chunk, "text", "")
-                                st.markdown(
-                                    f"**{i}. [{cat}/{fname}]** *(relevance: {score_str})*"
-                                )
-                                preview = text[:300] + ("…" if len(text) > 300 else "")
-                                st.caption(preview)
-                                st.markdown("")
-                    if missing_notes:
-                        st.markdown("**Missing evidence notes:**")
-                        for note in missing_notes:
-                            st.warning(note)
-                elif kb_size == 0:
-                    st.caption(
-                        "No knowledge base indexed. "
-                        "Run `python scripts/ingest_knowledge.py` to enable evidence retrieval."
-                    )
+                    st.markdown(f"*{result.apply_explanation}*")
+
+                    # ── Strengths ─────────────────────────────────────────────
+                    if result.strengths:
+                        st.markdown("#### Strengths")
+                        for s in result.strengths:
+                            st.success(f"✓ {s}")
+
+                    # ── Gaps ──────────────────────────────────────────────────
+                    if result.gaps:
+                        st.markdown("#### Gaps")
+                        for g in result.gaps:
+                            st.warning(f"△ {g}")
+
+                    # ── Risks ─────────────────────────────────────────────────
+                    if result.risks:
+                        st.markdown("#### Risks")
+                        for r in result.risks:
+                            st.error(f"⚠ {r}")
+
+                with res_c2:
+                    # ── Action Plan ───────────────────────────────────────────
+                    if result.action_items:
+                        st.markdown("#### Action Plan")
+                        for i, item in enumerate(result.action_items, 1):
+                            st.markdown(f"**{i}.** {item}")
+
+                    # ── Portfolio ─────────────────────────────────────────────
+                    st.markdown("---")
+                    st.markdown("#### Portfolio Recommendation")
+                    # Resolve fields from either RAGAnalysisResult or ManualAnalysisResult
+                    _base = getattr(result, "base_result", result)
+                    best_proj = getattr(result, "best_matching_project", "") or getattr(_base, "best_matching_project", "")
+                    port_rec = getattr(_base, "portfolio_recommendation", "")
+                    port_highlights = getattr(_base, "portfolio_highlights", [])
+                    if best_proj:
+                        st.success(f"Lead with: **{best_proj}**")
+                    st.write(port_rec)
+                    for h in port_highlights:
+                        st.caption(f"• {h}")
+
+                    # ── Career Direction ──────────────────────────────────────
+                    st.markdown("---")
+                    st.markdown("#### Career Direction")
+                    detected_track = getattr(_base, "detected_track", "")
+                    direction_assessment = getattr(_base, "direction_assessment", "")
+                    direction_explanation = getattr(_base, "direction_explanation", "")
+                    direction_advice = getattr(_base, "direction_advice", "")
+                    if detected_track:
+                        st.markdown(f"**Track:** {detected_track}")
+                    direction_icons = {
+                        "aligned":    "🟢 Aligned with your path",
+                        "partial":    "🟡 Partially aligned",
+                        "transition": "🔵 Good transition role",
+                        "off-track":  "🔴 Off your target track",
+                        "unknown":    "⚪ Direction unclear",
+                    }
+                    st.markdown(direction_icons.get(direction_assessment, direction_assessment))
+                    if direction_explanation:
+                        st.caption(direction_explanation)
+                    if direction_advice:
+                        st.info(direction_advice)
+
+                    # ── Detected metadata ─────────────────────────────────────
+                    st.markdown("---")
+                    st.markdown("#### Detected From Posting")
+                    # Support both RAGAnalysisResult and ManualAnalysisResult
+                    parsed_job = getattr(result, "parsed_job", None) or getattr(getattr(result, "base_result", result), "parsed_job", None)
+                    gap_severity = getattr(result, "gap_severity", "") or getattr(getattr(result, "base_result", result), "gap_severity", "")
+                    easy_gaps = getattr(result, "easy_to_close_gaps", []) or getattr(getattr(result, "base_result", result), "easy_to_close_gaps", [])
+                    hard_gaps = getattr(result, "hard_to_close_gaps", []) or getattr(getattr(result, "base_result", result), "hard_to_close_gaps", [])
+                    gap_sev_icon = {"low": "🟢", "medium": "🟡", "high": "🔴"}.get(gap_severity, "⚪")
+                    meta_items = [
+                        f"Seniority hint: **{parsed_job.detected_seniority_hint if parsed_job else 'unknown'}**",
+                        f"Gap severity: {gap_sev_icon} **{gap_severity}**",
+                    ]
+                    if easy_gaps:
+                        meta_items.append(f"Easy to close: {', '.join(easy_gaps[:3])}")
+                    if hard_gaps:
+                        meta_items.append(f"Hard gaps: {', '.join(hard_gaps[:3])}")
+                    if parsed_job and parsed_job.extracted_technologies:
+                        meta_items.append(
+                            f"Tech detected: {', '.join(parsed_job.extracted_technologies[:8])}"
+                        )
+                    for item in meta_items:
+                        st.caption(item)
+
+                    # ── RAG Evidence (shown in Hybrid mode when KB is indexed) ─
+                    evidence = getattr(result, "retrieved_evidence", [])
+                    coverage = getattr(result, "coverage", "none")
+                    missing_notes = getattr(result, "missing_evidence_notes", [])
+                    kb_size = getattr(result, "kb_size", 0)
+
+                    if evidence or missing_notes:
+                        st.markdown("---")
+                        st.markdown("#### Local Knowledge Evidence")
+                        cov_icons = {"high": "🟢 Strong", "medium": "🟡 Moderate", "low": "🟠 Weak", "none": "⚪ None"}
+                        st.caption(
+                            f"Evidence coverage: {cov_icons.get(coverage, coverage)} "
+                            f"| KB size: {kb_size} chunks"
+                        )
+                        if evidence:
+                            with st.expander(f"View {len(evidence)} evidence chunk(s) retrieved"):
+                                for i, chunk in enumerate(evidence[:5], 1):
+                                    score_str = f"{chunk.score:.3f}" if hasattr(chunk, "score") else ""
+                                    cat = getattr(chunk, "category", "")
+                                    fname = getattr(chunk, "file_name", "")
+                                    text = getattr(chunk, "text", "")
+                                    st.markdown(
+                                        f"**{i}. [{cat}/{fname}]** *(relevance: {score_str})*"
+                                    )
+                                    preview = text[:300] + ("…" if len(text) > 300 else "")
+                                    st.caption(preview)
+                                    st.markdown("")
+                        if missing_notes:
+                            st.markdown("**Missing evidence notes:**")
+                            for note in missing_notes:
+                                st.warning(note)
+                    elif kb_size == 0 and st.session_state.get("paste_exec_mode") == "agent_only":
+                        st.caption("Agent Only mode — knowledge base retrieval is disabled.")
+                    elif kb_size == 0:
+                        st.caption(
+                            "No knowledge base indexed. "
+                            "Run `python scripts/ingest_knowledge.py` to enable evidence retrieval."
+                        )
 
     # ── Render: Should I Apply? (focused) ────────────────────────────────────
     elif paste_mode == "apply":

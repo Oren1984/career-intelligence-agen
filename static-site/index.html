@@ -417,14 +417,15 @@
         <div class="flow-step reveal">
           <div class="flow-num">04</div>
           <div class="flow-body">
-            <h3>Score &amp; Analyze</h3>
+            <h3>Choose Execution Mode</h3>
             <p>
-              Run <code>scripts/score_jobs.py</code>. Each job is filtered by keyword rules, then scored
-              across 7 weighted dimensions using your profile. Simultaneously: gap analysis extracts
-              missing skills, portfolio matching identifies your best-fit projects, action planner
-              generates tailored next steps.
+              Select how the pipeline runs from the sidebar in the dashboard:
+              <strong>Hybrid (RAG + Agent)</strong> — career scoring with knowledge base evidence (default).
+              <strong>Agent Only</strong> — career scoring without KB retrieval.
+              <strong>RAG Only</strong> — knowledge base retrieval without scoring.
+              Each mode is explicit, deterministic, and shown in the status bar.
             </p>
-            <div class="flow-tag">7-Dim Scoring · Gap Analysis · Portfolio Matching</div>
+            <div class="flow-tag">Hybrid · Agent Only · RAG Only · Mode status panel</div>
           </div>
         </div>
 
@@ -433,13 +434,30 @@
         <div class="flow-step reveal">
           <div class="flow-num">05</div>
           <div class="flow-body">
+            <h3>Score &amp; Analyze</h3>
+            <p>
+              Each job is filtered by keyword rules, then scored across 7 weighted dimensions using your profile.
+              Simultaneously: gap analysis extracts missing skills, portfolio matching identifies your
+              best-fit projects, action planner generates tailored next steps.
+              In Hybrid mode, local knowledge base evidence is attached to each result.
+            </p>
+            <div class="flow-tag">7-Dim Scoring · Gap Analysis · Portfolio Matching</div>
+          </div>
+        </div>
+
+        <div class="flow-connector"></div>
+
+        <div class="flow-step reveal">
+          <div class="flow-num">06</div>
+          <div class="flow-body">
             <h3>Review in the Dashboard</h3>
             <p>
               Open the Streamlit dashboard (<code>streamlit run dashboard/streamlit_app.py</code>).
               The Decision Console shows scored jobs with recommendation labels ("Apply Now", "Stretch Opportunity",
               etc.). Ask your career Q&amp;A, review skill trends, and get your weekly strategic summary.
+              The execution status panel shows exactly which mode ran and what components executed.
             </p>
-            <div class="flow-tag">Streamlit · Decision Console · Career Q&A</div>
+            <div class="flow-tag">Streamlit · Decision Console · Career Q&A · Execution Status</div>
           </div>
         </div>
 

@@ -312,3 +312,114 @@ class RAGJobAnalyzer:
             except Exception:
                 pass
         return out
+
+    def analyze_rag_only(
+        self,
+        raw_text: str,
+        title: str = "",
+        company: str = "",
+        location: str = "",
+        top_k: int = 8,
+    ) -> "RAGOnlyResult":
+        """
+        Retrieval-only analysis: knowledge evidence without career scoring.
+
+        Use this in RAG Only execution mode to retrieve relevant knowledge
+        base chunks for a job description without running the scoring pipeline.
+        """
+        result = RAGOnlyResult(raw_text=raw_text)
+
+        if not self._ks.is_ready():
+            result.missing_evidence_notes = [
+                "Knowledge base is not indexed. "
+                "Go to the Knowledge Base tab and click 'Ingest Knowledge Base'."
+            ]
+            return result
+
+        try:
+            retrieval = self._ks.retrieve_for_job(raw_text, top_k=top_k)
+            result.retrieved_evidence = retrieval.chunks
+            result.evidence_used = retrieval.has_evidence()
+            result.kb_size = retrieval.kb_size
+            result.coverage = _assess_coverage(retrieval.chunks)
+            result.evidence_context = retrieval.as_context_string(max_chunks=5)
+            proj_ev, skill_ev, exp_ev = _classify_evidence(retrieval.chunks)
+            result.project_evidence = proj_ev
+            result.skill_evidence = skill_ev
+            result.experience_evidence = exp_ev
+            logger.info(
+                "RAG Only: %d chunks retrieved (coverage: %s)",
+                len(retrieval.chunks), result.coverage,
+            )
+        except Exception as exc:
+            logger.error("RAG retrieval failed: %s", exc)
+            result.missing_evidence_notes = [f"Evidence retrieval failed: {exc}"]
+
+        return result
+
+    def analyze_with_mode(
+        self,
+        raw_text: str,
+        mode: str = "hybrid",
+        title: str = "",
+        company: str = "",
+        location: str = "",
+    ) -> "RAGOnlyResult | RAGAnalysisResult | Any":
+        """
+        Dispatch analysis based on execution mode.
+
+        Args:
+            raw_text: Job description text.
+            mode: One of "hybrid" | "agent_only" | "rag_only".
+            title, company, location: Optional metadata overrides.
+
+        Returns:
+            RAGOnlyResult       — for rag_only mode (retrieval, no scoring)
+            ManualAnalysisResult — for agent_only mode (scoring, no RAG)
+            RAGAnalysisResult   — for hybrid mode (scoring + RAG evidence)
+        """
+        if mode == "rag_only":
+            return self.analyze_rag_only(
+                raw_text, title=title, company=company, location=location
+            )
+        if mode == "agent_only":
+            return self._base_analyzer.analyze(
+                raw_text, title=title, company=company, location=location
+            )
+        return self.analyze(raw_text, title=title, company=company, location=location)
+
+
+# ── RAG-Only result model ─────────────────────────────────────────────────────
+
+@dataclass
+class RAGOnlyResult:
+    """
+    Result of RAG Only execution mode.
+
+    Contains knowledge retrieval results without career scoring.
+    Use when execution_mode == "rag_only".
+    """
+    raw_text: str
+    retrieved_evidence: list[RetrievedChunk] = field(default_factory=list)
+    project_evidence: list[RetrievedChunk] = field(default_factory=list)
+    skill_evidence: list[RetrievedChunk] = field(default_factory=list)
+    experience_evidence: list[RetrievedChunk] = field(default_factory=list)
+    coverage: str = "none"
+    kb_size: int = 0
+    evidence_used: bool = False
+    missing_evidence_notes: list[str] = field(default_factory=list)
+    evidence_context: str = ""
+    execution_mode: str = "rag_only"
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "execution_mode": self.execution_mode,
+            "evidence_used": self.evidence_used,
+            "kb_size": self.kb_size,
+            "coverage": self.coverage,
+            "retrieved_evidence": [c.to_dict() for c in self.retrieved_evidence],
+            "project_evidence": [c.to_dict() for c in self.project_evidence],
+            "skill_evidence": [c.to_dict() for c in self.skill_evidence],
+            "experience_evidence": [c.to_dict() for c in self.experience_evidence],
+            "missing_evidence_notes": self.missing_evidence_notes,
+        }

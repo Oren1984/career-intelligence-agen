@@ -134,6 +134,35 @@ Portfolio Match	       5%
 
 ---
 
+## 🔀 Execution Modes
+
+The system supports three explicit execution modes, selectable from the sidebar in the dashboard:
+
+| Mode | What Runs | When to Use |
+|------|-----------|-------------|
+| **Hybrid (RAG + Agent)** | Career scoring + knowledge base retrieval | Default — full analysis with evidence |
+| **Agent Only** | Career scoring only, no KB retrieval | When knowledge base is not set up, or you only need scoring |
+| **RAG Only** | Knowledge base retrieval only, no scoring | When you only want to see what evidence exists for a job |
+
+Each mode is explicitly shown in the UI:
+- The **sidebar** displays which mode is active with a color-coded badge
+- The **"Analyze External Job" tab** shows the active mode and a description
+- An **execution status panel** appears after each run showing: mode used, success/failure, and which components ran
+
+```
+Mode: Hybrid (RAG + Agent)  |  Status: ✓ Success  |  Components: Career Scorer ✓ · KB Retrieval ✓
+```
+
+### Mode behavior in "Analyze External Job"
+
+- **Hybrid**: Full analysis with career scoring AND KB evidence (if KB is indexed)
+- **Agent Only**: Career scoring without KB evidence — works even if KB is not indexed
+- **RAG Only**: Retrieves relevant KB chunks for the job, shows coverage and evidence — no scoring
+
+The "Should I Apply?" and "Which Project?" buttons require career scoring — they prompt you to switch mode if RAG Only is selected.
+
+---
+
 ## 🖥 Dashboard Overview
 
 - Decision Console — main job evaluation
@@ -141,6 +170,9 @@ Portfolio Match	       5%
 - Analytics — trends & insights
 - Weekly Review — strategy guidance
 - Profile View — full candidate profile
+- Analyze External Job — paste & analyze with execution mode control
+- Knowledge Base — manage RAG index
+- Career Q&A — knowledge-grounded Q&A
 
 ---
 
